@@ -1,2 +1,96 @@
-# Churn-Prediction-FDE
-Churn Prediction Model with Explainability &amp; Bias Check
+**LOCALYTICS · FDE**
+
+**Churn Prediction Service — Forward Deployment Engineering**
+
+| Estimated effort | 5-7 focused hours (4-day window) |
+| :---- | :---- |
+| **Format** | Python, Terraform, containers, sample dataset provided |
+| **Focus areas** | Production deployment, platform integration, operational readiness |
+
+# **Scenario**
+
+We're providing a sample dataset of customer behavioral features (recency, frequency, engagement, demographic proxies) with a churn label.
+
+This mirrors the first prediction capability we want live in production: churn probability feeding campaign audience selection. Your job as a Forward Deployment Engineer is to design, build, and ship a production-ready path for that capability—not a notebook experiment.
+
+# **Sample dataset**
+
+The sample dataset lives in the [`data/`](data/) directory. Start with [`data/dataset_schema.json`](data/dataset_schema.json) for field definitions, label meaning, and descriptions of each file (train, test, cold-start, premium, and preview). See [`data/README.md`](data/README.md) for a short walkthrough of the schema.
+
+# **AWS interview account**
+
+An AWS interview account will be created for you so you can complete this exercise. Access is limited to **4 days**, starting when the AWS account invite is sent.
+
+Localytics is happy to schedule a short meeting to confirm your credentials are working and to provide additional context about the project if needed. Reach out if you want to set that up.
+
+# **Objectives**
+
+* Design and implement a churn prediction service that can run in a production-like environment on the provided AWS account.
+
+* Establish a clear baseline for prediction quality (a simple heuristic or rule is fine) and show your approach improves on it with metrics that fit a churn / campaign-selection use case (not just accuracy).
+
+* Make prediction outcomes understandable to product stakeholders: which signals drive a high churn score, and why those drivers are credible.
+
+* Check for uneven performance across subgroups implied by the available features. If gaps exist, say what you'd do about them before shipping.
+
+* Show how the service integrates with the platform (ingress/gateway, auth, observability) and how you would operate it after deploy.
+
+# **How to submit**
+
+**Fork this repository** and put your complete solution in the fork. Your fork should include all of the code, infrastructure, and diagrams for the exercise—do not submit materials only as separate attachments or links outside the repo.
+
+# **What to submit**
+
+1. **Service Code & Reproducible Pipeline**: Provide the code to build and run the churn prediction service, including whatever is needed to train or refresh the scoring logic and reproduce results.  
+2. **Evaluation Metrics**: Show your metrics compared to your baseline (a simple heuristic). Include reasoning for why your chosen metrics are appropriate for a churn problem (considering class imbalance and the business cost of false negatives vs. false positives).  
+3. **Explainability Output:** Show which features drive predictions (plots or equivalent) and include a concise interpretation for a non-technical stakeholder.  
+4. **Bias/Fairness Note:** Detail what you checked, what you discovered, and what recommendations you have if any performance gaps exist.  
+5. **Architecture Diagram:** Illustrate your proposed production solution.  
+6. **Infrastructure:** Containerize the solution and include Terraform (or equivalent) for the infrastructure your architecture needs (e.g. EKS ingress/route configuration).
+
+# **What we're evaluating**
+
+* Forward Deployment Engineering judgment: can you take an ambiguous customer problem and ship a credible production path?
+
+* Whether your evaluation approach fits a churn / campaign-selection problem (class imbalance, cost of false negatives vs. false positives).
+
+* Whether explainability, fairness checks, and operational concerns are built into the design—not bolted on at the end.
+
+* How clearly you communicate system behavior and trade-offs to product and platform stakeholders.
+
+* Quality of architecture, infrastructure-as-code, and production readiness (auth, rate limiting, observability, failure modes).
+
+# **Architecture Requirements**
+
+Provide a detailed architecture diagram of the proposed solution. This must include how the service fits into the platform’s existing ingress/gateway stack and authentication model.
+
+# **Technology Stack**
+
+The following technologies are allowed and preferred:
+
+* Well-known programming languages (Python and Terraform encouraged)  
+* Spark/EMR/EKS  
+* SageMaker  
+* S3  
+* IAM  
+* Athena  
+* Bedrock  
+* Airflow  
+* Parquet  
+* Containerize the solution and provide a Terraform snippet for the infrastructure (EKS ingress/route configuration).
+
+While these are preferred, alternatives can be used if a valid reason is provided. Your solution does not require you to use all of these, just the ones your architecture needs.
+
+# **Production Readiness**
+
+Explain how your service handles service-to-service authentication, how you would implement rate limiting, and how you would expose observability metrics (e.g., latency, error rate) back to the centralized platform dashboard.
+
+# **Notes & FDE Mindset**
+
+* **Questions are Encouraged:** We prefer clarity over guesswork. If you hit a wall, need clarification on constraints, or want to discuss a strategic trade-off, reach out—there is no penalty for asking.  
+* **Think Production-First:** Do not stop at a working scorer; design a system. We evaluate your solution on how it integrates into a live production environment. Consider failure modes, latency, cold-start issues, and how you would detect data quality or score drift once deployed.  
+* **The "So What?" Factor:** As an FDE, you are the bridge between technical capability and customer outcomes. For every technical decision (scoring approach, infrastructure setup, or feature choices), be prepared to answer: *How does this specifically improve the outcome for the end user?*  
+* **Explainable Trade-offs:** You will often need to balance sophistication against reliability and transparency. Explicitly state your trade-offs; a theoretically "perfect" scorer is often inferior to a reliable, explainable service the business can trust and act on.  
+* **Operational Rigor:** Prioritize maintainable, modular code and infrastructure over "quick-and-dirty" scripts. As you architect your solution, think about how an operator (or an AI agent) would support this system at 3:00 AM.
+
+*Questions during the exercise? Reach out any time; we'd rather you ask than guess. There is no penalty for asking clarifying questions.*
