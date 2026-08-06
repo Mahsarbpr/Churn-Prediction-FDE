@@ -1,44 +1,41 @@
 {
-  "description": "Localytics-style mobile marketing customer behavioral features with churn label. Designed for supervised churn modeling, SHAP explainability, and subgroup bias checks.",
+  "description": "Localytics-style mobile marketing raw event stream for a churn prediction service. Candidates engineer RFM (Recency, Frequency, Monetary) features from these events; those features become training data.",
   "industry": "mobile marketing / app engagement (Localytics-like)",
-  "label": {
-    "name": "churned",
-    "type": "binary",
-    "values": {
-      "0": "active / retained",
-      "1": "churned (no meaningful activity in observation window)"
-    }
+  "as_of_timestamp": "2024-06-01T12:00:00Z",
+  "as_of_note": "Use this observation timestamp when computing recency and lookback windows (e.g. last 30 / 90 days).",
+  "dataset": {
+    "file": "events.json",
+    "rows": 800,
+    "format": "JSON array of event objects",
+    "description": "Single sample file of raw events only. No precomputed features or separate customer table."
   },
-  "features": {
-    "customer_id": "Unique customer identifier",
-    "recency_days": "Days since last app session (recency)",
-    "frequency_30d": "App sessions in the last 30 days (frequency)",
-    "frequency_90d": "App sessions in the last 90 days (frequency)",
-    "avg_session_duration_sec": "Average session duration in seconds (engagement)",
-    "push_open_rate": "Fraction of push notifications opened, 0-1 (engagement)",
-    "push_opt_in": "Whether push notifications are enabled, 0/1 (engagement)",
-    "in_app_events_30d": "Tracked in-app events in last 30 days (engagement)",
-    "campaign_clicks_30d": "Campaign / deep-link clicks in last 30 days (engagement)",
-    "purchases_90d": "In-app purchase transactions in last 90 days",
-    "revenue_90d": "Revenue USD in last 90 days",
-    "days_since_install": "Days since app install (tenure proxy)",
-    "support_tickets_90d": "Support tickets in last 90 days",
-    "device_os": "Demographic/device proxy: ios | android",
-    "country_code": "Demographic/geo proxy",
-    "acquisition_channel": "Acquisition proxy: organic | paid_social | referral | app_store | paid_search",
-    "age_band": "Demographic proxy age band",
-    "plan_tier": "free | premium"
+  "fields": {
+    "event_id": "Unique event identifier",
+    "customer_id": "Customer who generated the event",
+    "event_type": "session | purchase | push_sent | push_open | in_app_event | campaign_click | support_ticket",
+    "timestamp": "Event time (ISO-8601 UTC)",
+    "properties": "Event-specific payload (see event_types)"
   },
-  "datasets": {
-    "customers_churn_train.json": "Primary training set (1600 rows)",
-    "customers_churn_test.json": "Holdout evaluation set (400 rows)",
-    "customers_churn_cold_start.json": "Newly acquired users, tenure <= 21 days (200 rows)",
-    "customers_churn_premium.json": "Premium / high-value cohort (300 rows)",
-    "customers_churn_preview.json": "10-row preview of the training schema"
+  "event_types": {
+    "session": { "properties": { "duration_sec": "Session length in seconds" } },
+    "purchase": { "properties": { "amount_usd": "Purchase amount in USD" } },
+    "push_sent": { "properties": { "campaign_id": "Push campaign id" } },
+    "push_open": { "properties": { "campaign_id": "Push campaign id" } },
+    "in_app_event": { "properties": { "event_name": "Tracked in-app action name" } },
+    "campaign_click": { "properties": { "campaign_id": "Campaign / deep-link id" } },
+    "support_ticket": { "properties": { "category": "billing | bug | account | other" } }
+  },
+  "feature_engineering_expectation": {
+    "required": "Engineer RFM features from raw events: Recency, Frequency, Monetary. Use as_of_timestamp for windows.",
+    "suggested_rfm": {
+      "recency": "Days since last meaningful activity (e.g. last session) relative to as_of_timestamp",
+      "frequency": "Count of sessions (or equivalent activity) in chosen lookback windows (e.g. 30d / 90d)",
+      "monetary": "Purchase count and/or revenue in a chosen lookback window (e.g. 90d)"
+    },
+    "optional": "You may add engagement-derived features (push open rate, campaign clicks, support volume, etc.) if you justify them."
   },
   "notes": [
-    "Behavioral features are correlated with churn (high recency, low frequency/engagement -> higher churn).",
-    "Mild subgroup base-rate differences exist for bias exercises (age_band 55+, paid_social, android+emerging markets).",
-    "Class imbalance is intentional; prefer PR-AUC / recall@k / precision-recall over raw accuracy."
+    "Raw events only; pre-aggregated feature tables are intentionally not provided.",
+    "Feature engineering (raw events -> RFM training table) is part of the assignment."
   ]
 }

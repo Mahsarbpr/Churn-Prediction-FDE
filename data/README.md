@@ -1,46 +1,44 @@
 # Dataset
 
-Customer behavioral features for a churn prediction service used in campaign audience selection, plus checks for subgroup performance gaps. The industry context is mobile marketing / app engagement (Localytics-style).
+One sample file of **raw events only** for a churn prediction service. **Pre-built features are not provided.** Feature engineering—transforming raw events into **RFM (Recency, Frequency, Monetary)**—is part of the assignment.
 
-## Schema reference: `dataset_schema.json`
+## File
 
-[`dataset_schema.json`](dataset_schema.json) is the source of truth for this dataset. It documents:
+| File | Rows | Description |
+| :---- | ---: | :---- |
+| [`events.json`](events.json) | 800 | JSON array of raw event objects |
 
-| Key | What it describes |
+## Observation time
+
+Use **`2024-06-01T12:00:00Z`** as the as-of timestamp when computing recency and lookback windows. See [`dataset_schema.json`](dataset_schema.json).
+
+## Event shape
+
+```json
+{
+  "event_id": "evt_00000001",
+  "customer_id": "cust_00047",
+  "event_type": "session",
+  "timestamp": "2024-03-03T16:24:29Z",
+  "properties": {
+    "duration_sec": 180
+  }
+}
+```
+
+| `event_type` | Typical `properties` |
 | :---- | :---- |
-| `description` / `industry` | High-level purpose and domain |
-| `label` | Target column (`churned`): `0` = active/retained, `1` = churned |
-| `features` | Every input field and what it measures |
-| `datasets` | Which JSON files are included and how many rows each has |
-| `notes` | Hints for scoring quality (feature–churn correlation, mild subgroup base-rate differences, class imbalance) |
+| `session` | `duration_sec` |
+| `purchase` | `amount_usd` |
+| `push_sent` / `push_open` | `campaign_id` |
+| `in_app_event` | `event_name` |
+| `campaign_click` | `campaign_id` |
+| `support_ticket` | `category` |
 
-Use this file when building features, choosing metrics, and deciding which subgroups to check for uneven performance.
+## Feature engineering (required)
 
-## Files
+Transform raw events → an RFM feature table (one row per `customer_id`), then use that as training / scoring input.
 
-| File | Role |
-| :---- | :---- |
-| `customers_churn_train.json` | Primary training set (1600 rows) |
-| `customers_churn_test.json` | Holdout evaluation set (400 rows) |
-| `customers_churn_cold_start.json` | Newly acquired users, tenure ≤ 21 days (200 rows) |
-| `customers_churn_premium.json` | Premium / high-value cohort (300 rows) |
-| `customers_churn_preview.json` | 10-row preview of the training schema |
-
-## Label
-
-- **`churned = 0`**: active / retained  
-- **`churned = 1`**: churned (no meaningful activity in the observation window)
-
-## Feature groups (from the schema)
-
-- **Recency / frequency:** `recency_days`, `frequency_30d`, `frequency_90d`
-- **Engagement:** `avg_session_duration_sec`, `push_open_rate`, `push_opt_in`, `in_app_events_30d`, `campaign_clicks_30d`
-- **Monetization / tenure:** `purchases_90d`, `revenue_90d`, `days_since_install`, `support_tickets_90d`
-- **Demographic / device proxies:** `device_os`, `country_code`, `acquisition_channel`, `age_band`, `plan_tier`
-- **Identifier:** `customer_id` (do not use as a predictive feature)
-
-## Notes for scoring
-
-- Behavioral features are correlated with churn (high recency, low frequency/engagement → higher churn).
-- Mild subgroup base-rate differences exist for fairness / performance-gap exercises (e.g. `age_band` 55+, `paid_social`, android + emerging markets).
-- Class imbalance is intentional; prefer PR-AUC, recall@k, or precision–recall over raw accuracy.
+- **Recency** — days since last meaningful activity (e.g. last `session`) relative to as-of  
+- **Frequency** — session (or activity) counts in lookback windows (e.g. 30d / 90d)  
+- **Monetary** — purchase count and/or revenue in a lookback window (e.g. 90d)
