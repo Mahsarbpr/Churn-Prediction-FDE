@@ -42,3 +42,13 @@ Transform raw events → an RFM feature table (one row per `customer_id`), then 
 - **Recency** — days since last meaningful activity (e.g. last `session`) relative to as-of  
 - **Frequency** — session (or activity) counts in lookback windows (e.g. 30d / 90d)  
 - **Monetary** — purchase count and/or revenue in a lookback window (e.g. 90d)
+
+No churn label is provided — you'll need to define one. Think carefully about how your label's time window relates to your feature time windows; defining both from the same underlying activity can make a model look far more accurate than it actually is.
+
+## Scaling the dataset (required)
+
+`events.json` is 800 rows across 80 customers (median ~10 events/customer). That's enough to understand the event shapes and prototype your RFM transform against, but it's too small to train on or evaluate directly — any train/test split or subgroup slice will leave you with single- or low-double-digit sample counts, which won't support a credible baseline comparison or fairness check.
+
+Once you understand the shape of the raw sample, write a script that generates additional **synthetic** customers/events preserving its statistical structure — event-type mix, inter-event timing, session durations, purchase amounts — and merge that with (or use it in place of) the raw sample before training. There's no single required size; pick something large enough to make your evaluation and subgroup analysis meaningful (order of hundreds to a couple thousand customers is a reasonable range), and briefly justify your choice and generative assumptions.
+
+If you want a meaningful bias/fairness check, note that the raw schema has **no profile/demographic fields** — only event-level data. You're welcome to invent synthetic segment attributes (e.g. plan tier, acquisition channel, region) as part of your generation script to give the fairness analysis something real to slice on. If you do, document that they're synthetic and state the assumptions behind them, so it's clear which parts of the analysis rest on invented vs. observed structure.

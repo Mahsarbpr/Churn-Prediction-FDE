@@ -36,6 +36,8 @@
   },
   "notes": [
     "Raw events only; pre-aggregated feature tables are intentionally not provided.",
-    "Feature engineering (raw events -> RFM training table) is part of the assignment."
+    "Feature engineering (raw events -> RFM training table) is part of the assignment.",
+    "This 800-row / 80-customer sample is intentionally too small to train or evaluate on directly. Candidates are expected to write a reproducible script that generates additional synthetic customers/events preserving the sample's statistical structure (event mix, timing, amounts) before training at scale.",
+    "No profile/demographic fields are provided. Candidates may synthesize segment attributes (plan tier, acquisition channel, region, etc.) as part of their data-generation script to support a meaningful bias/fairness check, as long as they're documented as synthetic."
   ]
 }
