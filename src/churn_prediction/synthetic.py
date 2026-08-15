@@ -2,6 +2,18 @@ import numpy as np
 import pandas as pd
 
 
+AS_OF_TIMESTAMP = pd.Timestamp("2024-06-01T12:00:00Z")
+
+MEANINGFUL_ACTIVITY = {
+    "session",
+    "purchase",
+    "push_open",
+    "in_app_event",
+    "campaign_click",
+    "support_ticket",
+}
+
+
 def generate_synthetic_events(
     events: pd.DataFrame,
     customer_count: int = 1000,
@@ -47,12 +59,23 @@ def generate_synthetic_events(
         .to_numpy()
     )
 
-    min_timestamp = events["timestamp"].min()
-    max_timestamp = events["timestamp"].max()
+    meaningful_events = events[
+        events["event_type"].isin(MEANINGFUL_ACTIVITY)
+    ]
 
-    available_span_days = (
-        max_timestamp - min_timestamp
-    ).total_seconds() / 86400
+    real_last_activity = (
+        meaningful_events.groupby("customer_id")["timestamp"]
+        .max()
+    )
+
+    real_recency_days = (
+        (AS_OF_TIMESTAMP - real_last_activity)
+        .dt.total_seconds()
+        .div(86400)
+        .to_numpy()
+    )
+
+    min_timestamp = events["timestamp"].min()
 
     rows: list[dict] = []
 
@@ -74,39 +97,73 @@ def generate_synthetic_events(
             size=gap_count,
         ).astype(float)
 
-        total_span_days = float(customer_gaps.sum())
+        relative_days = np.concatenate(
+            (
+                np.array([0.0]),
+                np.cumsum(customer_gaps),
+            )
+        )
 
-        # Resample unusually long histories until the full customer
-        # timeline fits within the source dataset's date range.
-        while total_span_days > available_span_days:
+        meaningful_indexes = [
+            index
+            for index, event_type in enumerate(customer_event_types)
+            if event_type in MEANINGFUL_ACTIVITY
+        ]
+
+        if meaningful_indexes:
+            last_meaningful_index = meaningful_indexes[-1]
+        else:
+            # Very unlikely, but ensures every customer can be positioned.
+            last_meaningful_index = event_count - 1
+
+        target_recency_days = float(
+            rng.choice(real_recency_days)
+        )
+
+        target_last_activity = (
+            AS_OF_TIMESTAMP
+            - pd.Timedelta(days=target_recency_days)
+        )
+
+        start_timestamp = (
+            target_last_activity
+            - pd.Timedelta(
+                days=float(relative_days[last_meaningful_index])
+            )
+        )
+
+        # If the generated history would begin before the source data,
+        # resample the gaps until it fits.
+        while start_timestamp < min_timestamp:
             customer_gaps = rng.choice(
                 gaps,
                 size=gap_count,
             ).astype(float)
-            total_span_days = float(customer_gaps.sum())
 
-        latest_start = max_timestamp - pd.Timedelta(
-            days=total_span_days
-        )
-
-        start_range_seconds = (
-            latest_start - min_timestamp
-        ).total_seconds()
-
-        if start_range_seconds > 0:
-            start_timestamp = min_timestamp + pd.Timedelta(
-                seconds=float(
-                    rng.uniform(0, start_range_seconds)
+            relative_days = np.concatenate(
+                (
+                    np.array([0.0]),
+                    np.cumsum(customer_gaps),
                 )
             )
-        else:
-            start_timestamp = min_timestamp
 
-        timestamp = start_timestamp
+            start_timestamp = (
+                target_last_activity
+                - pd.Timedelta(
+                    days=float(relative_days[last_meaningful_index])
+                )
+            )
 
         for event_index, event_type in enumerate(
             customer_event_types
         ):
+            timestamp = (
+                start_timestamp
+                + pd.Timedelta(
+                    days=float(relative_days[event_index])
+                )
+            )
+
             properties: dict = {}
 
             if event_type == "session":
@@ -149,11 +206,6 @@ def generate_synthetic_events(
                     "properties": properties,
                 }
             )
-
-            if event_index < len(customer_gaps):
-                timestamp += pd.Timedelta(
-                    days=float(customer_gaps[event_index])
-                )
 
     return (
         pd.DataFrame(rows)
