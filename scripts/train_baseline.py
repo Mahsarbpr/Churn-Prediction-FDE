@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-
+import json
 import pandas as pd
 
 from churn_prediction.modeling import (
@@ -30,6 +30,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("artifacts/churn_model.json"),
         help="Path for the selected XGBoost model artifact.",
+    )
+    parser.add_argument(
+        "--metadata-output",
+        type=Path,
+        default=Path("artifacts/churn_model_metadata.json"),
+        help="Path for model metadata.",
     )
     return parser.parse_args()
 
@@ -104,6 +110,27 @@ def main() -> None:
     )
 
     selected_model.save_model(args.model_output)
+    metadata = {
+    "model_type": "xgboost",
+    "model_version": "xgb-v1",
+    "feature_version": "rfm-v1",
+    "features": MODEL_FEATURES,
+    }
+
+    args.metadata_output.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with args.metadata_output.open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            metadata,
+            file,
+            indent=2,
+        )
 
     print(
         f"\nSaved selected XGBoost model to "
