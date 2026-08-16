@@ -4,7 +4,14 @@ import pandas as pd
 
 
 DEFAULT_AS_OF = pd.Timestamp("2024-06-01T12:00:00Z")
-
+MEANINGFUL_ACTIVITY = {
+    "session",
+    "purchase",
+    "push_open",
+    "in_app_event",
+    "campaign_click",
+    "support_ticket",
+}
 
 def load_events(path: str) -> pd.DataFrame:
     """Load and normalize raw event JSON."""
@@ -46,7 +53,7 @@ def build_rfm_features(
         as_of = as_of.tz_localize("UTC")
 
     # Only information available at scoring time may be used.
-    events = events[events["timestamp"] <= as_of]
+    events = events[events["timestamp"] < as_of]
 
     customer_ids = pd.Index(
         sorted(events["customer_id"].unique()),
@@ -56,13 +63,25 @@ def build_rfm_features(
     features = pd.DataFrame(index=customer_ids)
 
     # Recency
-    sessions = events[events["event_type"] == "session"]
+    meaningful_events = events[
+        events["event_type"].isin(MEANINGFUL_ACTIVITY)
+    ]
 
-    last_session = sessions.groupby("customer_id")["timestamp"].max()
+    last_activity = (
+        meaningful_events.groupby("customer_id")["timestamp"].max()
+    )
 
     features["recency_days"] = (
-        (as_of - last_session).dt.total_seconds() / 86400
+        (as_of - last_activity).dt.total_seconds() / 86400
     )
+    features["has_meaningful_history"] = (
+        features["recency_days"].notna().astype(int)
+    )
+
+    features["recency_days"] = features["recency_days"].fillna(0.0)
+
+    # Sessions are used for the frequency features below.
+    sessions = events[events["event_type"] == "session"]
 
     # Frequency
     start_30d = as_of - pd.Timedelta(days=30)
