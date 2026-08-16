@@ -140,6 +140,7 @@ def build_rfm_features(
     features["revenue_90d"] = (
         features["revenue_90d"]
         .fillna(0.0)
+        .astype(float)
         .round(2)
     )
 

@@ -102,3 +102,27 @@ def test_future_events_are_not_used() -> None:
 
     assert features.loc["customer_a", "recency_days"] == 12
     assert features.loc["customer_a", "sessions_30d"] == 1
+
+
+def test_revenue_is_numeric_when_customer_has_no_purchases() -> None:
+    events = pd.DataFrame(
+        [
+            make_event(
+                "e1",
+                "customer_a",
+                "session",
+                "2024-05-20T12:00:00Z",
+                {"duration_sec": 100},
+            ),
+        ]
+    )
+
+    features = build_rfm_features(
+        events,
+        as_of=AS_OF,
+    )
+
+    assert features.loc[0, "revenue_90d"] == 0.0
+    assert pd.api.types.is_float_dtype(
+        features["revenue_90d"]
+    )
