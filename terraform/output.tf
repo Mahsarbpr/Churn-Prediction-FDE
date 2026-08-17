@@ -13,3 +13,7 @@ output "eks_cluster_name" {
 output "eks_cluster_endpoint" {
   value = aws_eks_cluster.churn.endpoint
 }
+
+output "sagemaker_training_role_arn" {
+  value = aws_iam_role.sagemaker_training.arn
+}

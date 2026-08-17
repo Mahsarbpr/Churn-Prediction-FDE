@@ -1,0 +1,31 @@
+{
+  "TrainingJobName": "churn-prediction-xgb-v4",
+  "RoleArn": "arn:aws:iam::239302213769:role/churn-prediction-sagemaker-training-role",
+  "AlgorithmSpecification": {
+    "TrainingImage": "239302213769.dkr.ecr.us-east-1.amazonaws.com/churn-prediction-service:training-v3",
+    "TrainingInputMode": "File"
+  },
+  "InputDataConfig": [
+    {
+      "ChannelName": "training",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://churn-prediction-data-239302213769/training/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    }
+  ],
+  "OutputDataConfig": {
+    "S3OutputPath": "s3://churn-prediction-data-239302213769/models/sagemaker/"
+  },
+  "ResourceConfig": {
+    "InstanceType": "ml.m5.large",
+    "InstanceCount": 1,
+    "VolumeSizeInGB": 10
+  },
+  "StoppingCondition": {
+    "MaxRuntimeInSeconds": 1800
+  }
+}
