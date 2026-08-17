@@ -1,4 +1,8 @@
 from __future__ import annotations
+import json
+import logging
+import uuid
+import time
 
 from contextlib import asynccontextmanager
 
@@ -9,7 +13,6 @@ from churn_prediction.inference.prediction_service import (
     PredictionService,
 )
 from churn_prediction.runtime import build_prediction_service
-import time
 
 from churn_prediction.telemetry import (
     configure_metrics,
@@ -17,6 +20,8 @@ from churn_prediction.telemetry import (
     request_latency,
     score_distribution,
 )
+
+logger = logging.getLogger("uvicorn.error")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -75,7 +80,7 @@ def predict(
             status_code=503,
             detail="Prediction service is not ready.",
         )
-
+    request_id = str(uuid.uuid4())
     started = time.perf_counter()
 
     try:
@@ -83,6 +88,19 @@ def predict(
             customer_id=request.customer_id,
         )
 
+        logger.info(
+            json.dumps(
+            {
+                "event": "churn_prediction",
+                "request_id": request_id,
+                "customer_id": result["customer_id"],
+                "churn_probability": result["churn_probability"],
+                "model_version": result["model_version"],
+                "scored_at": result["scored_at"],
+                "status": "success",
+            }
+            )
+        )
         score_distribution.record(
             float(result["churn_probability"])
         )
@@ -94,17 +112,39 @@ def predict(
             1,
             {"error_type": "customer_not_found"},
         )
-
+        logger.warning(
+            json.dumps(
+            {
+                "event": "churn_prediction",
+                "request_id": request_id,
+                "customer_id": request.customer_id,
+                "status": "not_found",
+                "error": str(exc),
+            }
+            )
+        )
         raise HTTPException(
             status_code=404,
             detail=str(exc),
         ) from exc
 
     except Exception:
+        logger.exception(
+            json.dumps(
+                {
+                    "event": "churn_prediction",
+                    "request_id": request_id,
+                    "customer_id": request.customer_id,
+                    "status": "error",
+                }
+            )
+        )
+
         prediction_errors.add(
             1,
             {"error_type": "internal"},
         )
+
         raise
 
     finally:
