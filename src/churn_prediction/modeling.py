@@ -97,6 +97,38 @@ def evaluate_model(
         ),
     }
 
+
+def evaluate_recency_baseline(
+    test: pd.DataFrame,
+    threshold_days: float = 60.0,
+) -> dict:
+    scores = test["recency_days"].astype(float)
+
+    predictions = (
+        scores >= threshold_days
+    ).astype(int)
+
+    return {
+        "roc_auc": roc_auc_score(
+            test["churn"],
+            scores,
+        ),
+        "pr_auc": average_precision_score(
+            test["churn"],
+            scores,
+        ),
+        "precision": precision_score(
+            test["churn"],
+            predictions,
+            zero_division=0,
+        ),
+        "recall": recall_score(
+            test["churn"],
+            predictions,
+            zero_division=0,
+        ),
+    }
+
 def evaluate_thresholds(
     model,
     test: pd.DataFrame,

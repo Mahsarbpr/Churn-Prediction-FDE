@@ -6,6 +6,7 @@ import pandas as pd
 from churn_prediction.modeling import (
     MODEL_FEATURES,
     evaluate_model,
+    evaluate_recency_baseline,
     evaluate_thresholds,
     split_by_customer,
     train_gradient_boosting,
@@ -71,6 +72,18 @@ def main() -> None:
     for feature in MODEL_FEATURES:
         print(f"  {feature}")
 
+    baseline_metrics = evaluate_recency_baseline(
+    test,
+    threshold_days=60.0,
+    )
+
+    baseline_name = "Heuristic Baseline: Recency >= 60 days"
+
+    print(f"\n{baseline_name}")
+    print("-" * len(baseline_name))
+
+    for name, value in baseline_metrics.items():
+        print(f"  {name}: {value:.3f}")
     for model_name, train_model in models.items():
         model = train_model(train)
 

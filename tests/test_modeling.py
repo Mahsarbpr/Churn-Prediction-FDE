@@ -1,6 +1,7 @@
 import pandas as pd
 
 from churn_prediction.modeling import (
+    evaluate_recency_baseline,
     split_by_customer,
     predict_churn_probability,
     train_xgboost,
@@ -69,3 +70,35 @@ def test_predict_churn_probability_returns_valid_probabilities() -> None:
     assert len(probabilities) == len(dataset)
     assert probabilities.between(0.0, 1.0).all()
     assert probabilities.name == "churn_probability"
+
+def test_recency_baseline_uses_60_day_threshold() -> None:
+    dataset = pd.DataFrame(
+        [
+            {
+                "recency_days": 10.0,
+                "churn": 0,
+            },
+            {
+                "recency_days": 45.0,
+                "churn": 0,
+            },
+            {
+                "recency_days": 60.0,
+                "churn": 1,
+            },
+            {
+                "recency_days": 90.0,
+                "churn": 1,
+            },
+        ]
+    )
+
+    metrics = evaluate_recency_baseline(
+        dataset,
+        threshold_days=60.0,
+    )
+
+    assert metrics["precision"] == 1.0
+    assert metrics["recall"] == 1.0
+    assert metrics["roc_auc"] == 1.0
+    assert metrics["pr_auc"] == 1.0
