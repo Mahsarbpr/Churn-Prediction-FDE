@@ -5,3 +5,11 @@ output "ecr_repository_url" {
 output "s3_data_lake_bucket_name" {
   value = aws_s3_bucket.churn_data_lake.bucket
 }
+
+output "eks_cluster_name" {
+  value = aws_eks_cluster.churn.name
+}
+
+output "eks_cluster_endpoint" {
+  value = aws_eks_cluster.churn.endpoint
+}
