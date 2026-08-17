@@ -31,6 +31,8 @@ spec:
               value: "aws"
             - name: CHURN_S3_BUCKET
               value: "churn-prediction-data-239302213769"
+            - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+              value: "http://otel-collector:4318/v1/metrics"
           readinessProbe:
             httpGet:
               path: /health

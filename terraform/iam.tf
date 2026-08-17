@@ -60,3 +60,44 @@ resource "aws_eks_pod_identity_association" "churn_service" {
     aws_eks_addon.pod_identity_agent,
   ]
 }
+
+
+resource "aws_iam_role" "otel_collector" {
+  name = "churn-prediction-otel-collector-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "pods.eks.amazonaws.com"
+        }
+
+        Action = [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "otel_collector_cloudwatch" {
+  role       = aws_iam_role.otel_collector.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_eks_pod_identity_association" "otel_collector" {
+  cluster_name    = aws_eks_cluster.churn.name
+  namespace       = "default"
+  service_account = "otel-collector"
+  role_arn        = aws_iam_role.otel_collector.arn
+
+  depends_on = [
+    aws_eks_addon.pod_identity_agent,
+    aws_iam_role_policy_attachment.otel_collector_cloudwatch,
+  ]
+}
