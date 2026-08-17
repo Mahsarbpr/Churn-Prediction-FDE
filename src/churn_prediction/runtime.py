@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 
+import boto3
 import pandas as pd
 
 from churn_prediction.features import load_events
@@ -14,57 +15,77 @@ from churn_prediction.inference.prediction_service import (
 from churn_prediction.repositories.local import (
     LocalEventRepository,
 )
+from churn_prediction.repositories.s3 import (
+    S3EventRepository,
+)
+
+
+def _download_model_from_s3(
+    bucket: str,
+    key: str,
+    destination: Path,
+) -> None:
+    destination.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    s3 = boto3.client("s3")
+
+    s3.download_file(
+        bucket,
+        key,
+        str(destination),
+    )
 
 
 def build_prediction_service() -> PredictionService:
-    model_path = Path(
-        os.getenv(
-            "CHURN_MODEL_PATH",
-            "artifacts/churn_model.json",
-        )
+    runtime_mode = os.getenv(
+        "CHURN_RUNTIME_MODE",
+        "local",
     )
 
-    metadata_path = Path(
-        os.getenv(
-            "CHURN_MODEL_METADATA_PATH",
-            "artifacts/churn_model_metadata.json",
-        )
-    )
+    if runtime_mode == "aws":
+        bucket = os.environ["CHURN_S3_BUCKET"]
 
-    events_path = Path(
-        os.getenv(
-            "CHURN_EVENTS_PATH",
-            "data/events.json",
+        repository = S3EventRepository(
+            bucket=bucket,
+            key="raw/events.json",
         )
-    )
 
-    with metadata_path.open(
-        "r",
-        encoding="utf-8",
-    ) as file:
-        metadata = json.load(file)
+        model_path = Path(
+            "/tmp/churn_model.json"
+        )
+
+        _download_model_from_s3(
+            bucket=bucket,
+            key="models/xgb-v1/churn_model.json",
+            destination=model_path,
+        )
+
+    else:
+        events = load_events(
+            "data/events.json"
+        )
+
+        repository = LocalEventRepository(
+            events
+        )
+
+        model_path = Path(
+            "artifacts/churn_model.json"
+        )
 
     model = load_churn_model(
-        model_type=metadata["model_type"],
+        model_type="xgboost",
         model_path=model_path,
-        model_version=metadata["model_version"],
+        model_version="xgb-v1",
     )
-
-    events = load_events(str(events_path))
-
-    repository = LocalEventRepository(events)
-
-    scoring_time = os.getenv("CHURN_SCORING_TIME")
-
-    if scoring_time:
-        clock = lambda: pd.Timestamp(scoring_time)
-    else:
-        clock = lambda: pd.Timestamp.now(tz="UTC")
 
     return PredictionService(
         model=model,
         event_repository=repository,
-        clock=lambda: pd.Timestamp( #later we will change to clock
-        "2024-06-01T12:00:00Z"
+        clock=lambda: pd.Timestamp(
+            "2024-06-01T12:00:00Z"
         ),
     )
