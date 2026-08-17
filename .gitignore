@@ -20,10 +20,10 @@ artifacts/*
 !artifacts/.gitkeep
 
 # Terraform
-.terraform/
+**/.terraform/*
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
+crash.log
 
 # OS
 .DS_Store
