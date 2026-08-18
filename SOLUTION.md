@@ -2,7 +2,7 @@
 
 A production-oriented churn scoring service built from raw customer events. The repository includes reproducible feature engineering, point-in-time churn labeling, model training and evaluation, explainability, a bias/fairness assessment, a FastAPI prediction service, AWS infrastructure, observability, and managed training with SageMaker.
 
-The service returns a **churn probability**. Campaign owners can choose their own operating threshold based on the cost of missed churners versus unnecessary outreach.
+The service gets **customer id** as input and returns a **churn probability**.
 
 ## Implementation status
 
@@ -52,7 +52,7 @@ FastAPI → OpenTelemetry → OTel Collector → CloudWatch
 
 ### Service-to-service authentication
 
-**Existing platform behavior, not deployed in this AWS environment:** internal production calls use the platform's service mesh for workload authentication and mTLS. When downstream authorization requires caller identity, a scoped token can be carried in addition to workload mTLS.
+**Existing Localitycs platform behavior, not deployed in this AWS environment:** internal production calls use the platform's service mesh for workload authentication and mTLS. When downstream authorization requires caller identity, a scoped token can be carried in addition to workload mTLS.
 
 The deployed service therefore demonstrates the AWS/EKS integration path, while Keycloak JWT enforcement and mesh mTLS are shown as the platform integration contract rather than claimed as implemented here.
 
@@ -75,7 +75,7 @@ Current online service loads:
 models/xgb-v1/churn_model.json        approved serving model
 ```
 
-Feature generation, evaluation, explainability, and fairness checks are implemented as reproducible scripts. The SageMaker training job was executed successfully in AWS. **Automatic model promotion is not implemented.** A production workflow would evaluate a newly trained candidate and only then update the versioned serving model after approval.
+Feature generation, evaluation, explainability, and fairness checks are implemented as reproducible scripts. The SageMaker training job was executed successfully in AWS.
 
 ---
 
@@ -277,10 +277,6 @@ Invoke-RestMethod `
 
 The fixed historical `scored_at` used by this deployed demo aligns scoring with the supplied historical event window. Production scoring should use the actual scoring time/current UTC.
 
-### Current online lookup trade-off
-
-`S3EventRepository` reads the current raw event object and filters for the requested customer. This is sufficient for the small supplied dataset, but not a production-scale lookup design. At scale I would partition/materialize features so the online service retrieves one customer's current feature row rather than scanning a monolithic raw object.
-
 ---
 
 ## 6. AWS deployment and security
@@ -315,17 +311,6 @@ The fixed historical `scored_at` used by this deployed demo aligns scoring with 
 ### Rate limiting
 
 **Implemented and deployed:** AWS WAF is attached to the ALB and contains an IP-based rate rule (`limit = 100`). Production limits should be tuned to expected campaign traffic and can be supplemented with per-client quotas when caller identity is available.
-
-### Production hardening not implemented here
-
-- HTTPS/TLS termination with ACM
-- Keycloak JWT enforcement
-- service-mesh mTLS policy on the deployed workload
-- private worker networking/VPC endpoints
-- centralized retained audit logs
-- immutable serving image tags/digests
-
----
 
 ## 7. Observability and auditability
 
@@ -365,14 +350,18 @@ Additional evidence:
 
 ## 9. Failure modes and design trade-offs
 
-| Concern             | Current behavior                                     | Production direction                                                    |
-| ------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| Unknown customer    | `404`, error metric, structured log                  | retain contract; optionally add cold-start fallback                     |
-| S3 unavailable      | request fails                                        | bounded retries, materialized/cached features, circuit-breaker behavior |
-| Missing model       | pod startup fails                                    | health-gated rollout and previous-version rollback                      |
-| Cold-start customer | explicit history flag, but very little training data | collect more examples / fallback policy                                 |
-| Raw S3 lookup       | scans small raw object                               | partition/materialize online features                                   |
-| Model promotion     | manual                                               | versioned approval/promotion + rollback                                 |
+| Concern             | Current behavior                                                                                                    | Production direction                                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unknown customer    | Returns `404`, records an error metric, and emits a structured log                                                  | Keep the `404` contract; optionally return an insufficient-history fallback if new customers are common                                                                    |
+| S3 unavailable      | Prediction request fails                                                                                            | Retry temporary failures a small number of times; longer term, serve precomputed customer features instead of depending on raw S3 reads for every request                  |
+| Missing model       | Pod startup fails if the model cannot be loaded                                                                     | Do not route traffic until the model loads successfully; keep the previous working model available for rollback                                                            |
+| Cold-start customer | `has_meaningful_history` is available, but only 8 training rows represent customers with limited/no history         | Collect more cold-start examples and use a fallback policy until enough history is available                                                                               |
+| Raw S3 lookup       | The service reads the small raw event object from S3 and builds features at scoring time                            | Precompute and store feature values by customer so online scoring can fetch ready-to-use features                                                                          |
+| New model version   | SageMaker produces a candidate model artifact, while the deployed service continues using the current serving model | Evaluate the candidate first, then approve and deploy it only if it passes model-quality, explainability, and bias/fairness checks; retain the previous model for rollback |
+
+The current S3 request-time lookup is intentionally simple for the available dataset. At larger scale, feature engineering should run ahead of online scoring so the prediction service reads a prepared customer feature record rather than scanning raw events.
+
+Similarly, a newly trained model should not automatically replace the serving model. Training, evaluation, approval, deployment, and rollback should remain separate steps so that a bad model can be rejected or reverted without interrupting the service. |
 
 ### Why EKS
 
