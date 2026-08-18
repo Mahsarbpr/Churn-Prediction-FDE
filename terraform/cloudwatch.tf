@@ -20,6 +20,8 @@ resource "aws_cloudwatch_dashboard" "churn_prediction" {
               "churn_prediction.request_latency_ms",
               "route",
               "/predict",
+              "OTelLib",
+              "churn-prediction-service"
             ]
           ]
 
@@ -42,6 +44,10 @@ resource "aws_cloudwatch_dashboard" "churn_prediction" {
             [
               "ChurnPrediction",
               "churn_prediction.errors",
+              "error_type",
+              "customer_not_found",
+              "OTelLib",
+              "churn-prediction-service"
             ]
           ]
 
@@ -57,13 +63,15 @@ resource "aws_cloudwatch_dashboard" "churn_prediction" {
         height = 6
 
         properties = {
-          title  = "Churn Score Distribution"
+          title  = "Average Churn Score"
           region = "us-east-1"
 
           metrics = [
             [
               "ChurnPrediction",
               "churn_prediction.score",
+              "OTelLib",
+              "churn-prediction-service"
             ]
           ]
 
