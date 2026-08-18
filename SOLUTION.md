@@ -161,7 +161,19 @@ The simple recency rule performs poorly on this synthetic-augmented dataset. Tha
 
 ## 3. Explainability
 
-The pipeline produces both global and customer-level XGBoost explanations.
+### Global drivers
+
+![Global feature importance](docs/global-feature-importance.png)
+
+Recency is the dominant signal used by the model, accounting for about 80% of total split gain in this training run. Recent revenue and session activity provide additional context, while purchase frequency contributes less.
+
+For a non-technical stakeholder: **long periods without meaningful activity are the clearest warning sign of churn in this model. Recent spending and engagement help refine that risk rather than replacing inactivity as the primary signal.**
+
+### Example prediction
+
+![Example prediction explanation](docs/example-prediction-explanation.png)
+
+For the example held-out customer, the model predicted a **78.5% churn probability**. The customer's approximately **128 days without meaningful activity** was by far the strongest signal increasing the churn prediction. Other recent engagement and purchase signals had much smaller effects.
 
 ### Global model signals
 
